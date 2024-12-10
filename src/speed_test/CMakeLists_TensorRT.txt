@@ -1,0 +1,28 @@
+cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
+project(NNC2P_Speed_Test)
+
+# Set Torch path (modify if necessary)
+set(CMAKE_PREFIX_PATH "/path/to/your/libtorch")
+
+# Set CUDA architectures for A100 (Compute Capability 8.0)
+set(TORCH_CUDA_ARCH_LIST "8.0" CACHE STRING "CUDA architectures for A100")
+
+find_package(Torch REQUIRED)
+set(TENSORRT_ROOT "/path/to/TensorRT/installation/directory")
+include_directories(${TENSORRT_ROOT}/include)
+link_directories(${TENSORRT_ROOT}/lib)
+
+# Add executable for the speed test
+add_executable(speed_test_batched_gpu_trt speed_test_batched_gpu_trt.cpp)
+
+# Link against Torch and TensorRT libraries
+target_link_libraries(speed_test_batched_gpu_trt
+    ${TORCH_LIBRARIES}
+    ${TENSORRT_ROOT}/lib/libnvinfer.so
+    ${TENSORRT_ROOT}/lib/libnvinfer_plugin.so
+    ${TENSORRT_ROOT}/lib/libnvparsers.so
+    ${TENSORRT_ROOT}/lib/libnvonnxparser.so  # If using ONNX models
+)
+
+# Set C++ standard to C++17
+set_property(TARGET speed_test_batched_gpu_trt PROPERTY CXX_STANDARD 17)

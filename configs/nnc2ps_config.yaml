@@ -1,0 +1,30 @@
+model:
+  name: "NNC2PS"
+  input_dim: 3
+  hidden_dims: [600, 200]
+  output_dim: 1
+
+training:
+  batch_size: 32
+  num_epochs: 85
+  learning_rate: 3e-4
+  penalty_factor: 150.0
+  validation_split: 0.05
+  test_split: 0.05
+
+data:
+  n_samples: 500000
+  gamma_th: 1.666667  # 5/3
+  rho_min: 2.0e-5
+  rho_max: 2.0e-3
+  vx_max: 0.721
+  eps_min: 0
+  eps_max: 2
+  K: [8.9493e-02, null, null, null]
+  Gamma: [1.3569, 3.0050, 2.9880, 2.8510]
+  rho_breaks: [2.3674e-04, 8.1147e-04, 1.6191e-03]
+
+paths:
+  models: "models"
+  images: "images"
+  eos_tables: "eos_tables"

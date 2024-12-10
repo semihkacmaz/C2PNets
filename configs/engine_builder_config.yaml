@@ -1,0 +1,25 @@
+model:
+  name: "NNC2PL"  # Model name (NNC2PS, NNC2PL, NNC2P_Tabulated)
+  input_dim: 3
+  output_dim: 1
+
+tensorrt:
+  precision: "fp32"  # fp32 or fp16
+  workspace_size: 2  # in GB
+  batch_size:
+    min_factor: 0.95
+    optimal_factor: 1.0
+    max_factor: 1.05
+    fixed:
+      min: 1
+      optimal: 250000
+      max: 1000000
+    use_fixed: false  # if true, use fixed batch sizes instead of factors
+
+data:
+  input_file: "inputs_test_scaled_1000000.txt"  # File name under src/speed_test/speed-test-data
+  dataset_size: 1000000  # Number of samples in the dataset
+
+paths:
+  models: "models"
+  speed_test: "src/speed_test/speed-test-data"

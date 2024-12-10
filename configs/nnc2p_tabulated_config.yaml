@@ -1,0 +1,23 @@
+model:
+  name: "NNC2P_Tabulated"
+  input_dim: 4
+  hidden_dims: [1024, 512, 256, 128, 64]
+  output_dim: 1
+
+training:
+  batch_size: 32
+  num_epochs: 250
+  learning_rate: 3.0e-4
+  penalty_factor: 0.0
+  validation_split: 0.05
+  test_split: 0.05
+  checkpoint_interval: 126
+
+data:
+  n_samples: 1000000
+  eos_table_filename: "LS220_234r_136t_50y_analmu_20091212_SVNr26.h5"
+
+paths:
+  models: "models"
+  images: "images"
+  eos_tables: "eos_tables"
