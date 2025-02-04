@@ -70,39 +70,70 @@ int main(int argc, char* argv[]) {
     }
     input_file.close();
 
-    // Start measuring time
-    auto start = std::chrono::high_resolution_clock::now();
-
-    // Inference in batches
+    // Pre-process all batches
     std::vector<torch::Tensor> outputs;
-    size_t batch_size = 25000;
-    for (size_t i = 0; i < inputs.size(); i += batch_size) {
-        std::vector<torch::Tensor> batch_inputs(inputs.begin() + i, inputs.begin() + std::min(i + batch_size, inputs.size()));
-        torch::Tensor batch = torch::stack(batch_inputs).to(torch::kCUDA);
+    std::vector<torch::Tensor> input_batches;
+    std::vector<std::vector<void*>> batch_buffers;
+    const size_t batch_size = 100000;  // Fixed batch size
+    const size_t num_batches = (inputs.size() + batch_size - 1) / batch_size;  // Ceiling division
 
-        // Inference setup
+    // Prepare input batches with fixed size
+    for (size_t i = 0; i < num_batches; i++) {
+        size_t start_idx = i * batch_size;
+        size_t end_idx = std::min(start_idx + batch_size, inputs.size());
+        size_t current_batch_size = end_idx - start_idx;
+
+        std::vector<torch::Tensor> batch_inputs(inputs.begin() + start_idx,
+                                              inputs.begin() + end_idx);
+
+        if (current_batch_size < batch_size) {
+            // Pad last batch if needed
+            batch_inputs.resize(batch_size, batch_inputs.back());
+        }
+
+        torch::Tensor input_batch = torch::stack(batch_inputs).to(torch::kCUDA);
+        input_batches.push_back(input_batch);
+
         std::vector<void*> buffers(2);
-        buffers[0] = batch.data_ptr<float>();
-        torch::Tensor output = torch::empty({batch.size(0), 1}, torch::kCUDA);
-        buffers[1] = output.data_ptr<float>();
+        buffers[0] = input_batch.data_ptr<float>();
+        batch_buffers.push_back(buffers);
+    }
 
-        // Perform inference
-        context->executeV2(buffers.data());
+    // Create CUDA events for timing
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
 
+    cudaDeviceSynchronize();
+    cudaEventRecord(start);
+
+    // Pure inference loop with fixed batch size
+    for (size_t i = 0; i < num_batches; i++) {
+        torch::Tensor output = torch::empty({batch_size, 1}, torch::kCUDA);
+        batch_buffers[i][1] = output.data_ptr<float>();
+
+        context->executeV2(batch_buffers[i].data());
+
+        // Only store the valid outputs for the last batch
+        if (i == num_batches - 1 && (inputs.size() % batch_size) != 0) {
+            output = output.slice(0, 0, inputs.size() % batch_size);
+        }
+
+        output = output * STD_DEV + MEAN;
         outputs.push_back(output);
     }
 
-    // Apply inverse standard scaling to the outputs on GPU
-    for (auto& batch_output : outputs) {
-        batch_output = batch_output * STD_DEV + MEAN;
-    }
+    cudaEventRecord(stop);
+    cudaEventSynchronize(stop);
 
-    // Stop measuring time
-    auto finish = std::chrono::high_resolution_clock::now();
+    float milliseconds = 0;
+    cudaEventElapsedTime(&milliseconds, start, stop);
 
-    for (auto& batch_output : outputs) {
-        batch_output = batch_output.to(torch::kCPU);
-    }
+    // Clean up events
+    cudaEventDestroy(start);
+    cudaEventDestroy(stop);
+
+    std::cout << "Pure inference time: " << milliseconds / 1000.0 << " s\n";
 
     std::ofstream output_file("preds_tensorrt.txt");
     if (!output_file.is_open()) {
@@ -121,8 +152,6 @@ int main(int argc, char* argv[]) {
     }
     output_file.close();
 
-    std::chrono::duration<double> elapsed = finish - start;
-    std::cout << "Elapsed time: " << elapsed.count() << " s\n";
 
     context->destroy();
     engine->destroy();
