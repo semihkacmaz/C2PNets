@@ -1,6 +1,6 @@
 torch>=2.0.0
 torchvision>=0.15.0
-tensorrt>=8.6.1
+tensorrt=8.4.1.5
 numpy>=1.21.0
 scikit-learn>=1.0.0
 h5py>=3.8.0
